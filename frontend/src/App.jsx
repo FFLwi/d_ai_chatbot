@@ -2,10 +2,21 @@ import { useState } from 'react'
 
 function App() {
   const [question, setQuestion] = useState('')
-  const [answer, setAnswer] = useState('')
+  const [messages, setMessages] = useState([])
   const [history, setHistory] = useState([])
+  const [loading, setLoading] = useState(false)
 
   const handleAsk = async () => {
+    if (!question.trim()) return
+
+    const userMessage = {
+      role: 'user',
+      content: question,
+    }
+
+    setMessages((prev) => [...prev, userMessage])
+    setLoading(true)
+
     try {
       const response = await fetch('http://localhost:8080/api/chat/ask', {
         method: 'POST',
@@ -16,11 +27,25 @@ function App() {
       })
 
       const data = await response.json()
-      setAnswer(data.answer)
+
+      const assistantMessage = {
+        role: 'assistant',
+        content: data.answer,
+      }
+
+      setMessages((prev) => [...prev, assistantMessage])
       setQuestion('')
     } catch (error) {
       console.error(error)
-      setAnswer('서버 요청 중 오류가 발생했습니다.')
+      setMessages((prev) => [
+        ...prev,
+        {
+          role: 'assistant',
+          content: '서버 요청 중 오류가 발생했습니다.',
+        },
+      ])
+    } finally {
+      setLoading(false)
     }
   }
 
@@ -35,42 +60,233 @@ function App() {
   }
 
   return (
-    <div style={{ padding: '40px', maxWidth: '800px', margin: '0 auto' }}>
-      <h1>d_ai_chatbot</h1>
+    <div
+      style={{
+        minHeight: '100vh',
+        backgroundColor: '#f7f7f8',
+        fontFamily: 'Arial, sans-serif',
+        display: 'flex',
+      }}
+    >
+      <aside
+        style={{
+          width: '260px',
+          backgroundColor: '#202123',
+          color: '#ffffff',
+          padding: '24px 20px',
+          boxSizing: 'border-box',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '20px',
+        }}
+      >
+        <div>
+          <h2
+              style={{
+                margin: 0,
+                fontSize: '22px',
+                color: '#ffffff',
+                fontWeight: '700',
+                letterSpacing: '0.3px',
+              }}
+              >
+            d_ai_chatbot
+          </h2>
+          <p style={{ color: '#c5c5d2', fontSize: '14px', marginTop: '8px' }}>
+            Spring Boot · FastAPI · MySQL 기반 데모
+          </p>
+        </div>
 
-      <div style={{ marginBottom: '20px' }}>
-        <input
-          type="text"
-          value={question}
-          onChange={(e) => setQuestion(e.target.value)}
-          placeholder="질문을 입력하세요"
-          style={{ width: '70%', padding: '10px', marginRight: '10px' }}
-        />
-        <button onClick={handleAsk} style={{ padding: '10px 16px' }}>
-          전송
+        <button
+          onClick={loadHistory}
+          style={{
+            padding: '12px 14px',
+            borderRadius: '10px',
+            border: '1px solid #444654',
+            backgroundColor: '#343541',
+            color: '#ffffff',
+            cursor: 'pointer',
+            textAlign: 'left',
+            fontWeight: 'bold',
+          }}
+        >
+          대화 기록 조회
         </button>
-      </div>
 
-      <div style={{ marginBottom: '30px' }}>
-        <h2>응답</h2>
-        <div>{answer}</div>
-      </div>
+        <div>
+          <h3 style={{ fontSize: '15px', marginBottom: '10px', color: '#d9d9e3' }}>
+            최근 기록
+          </h3>
+          <div style={{ display: 'grid', gap: '10px' }}>
+            {history.length === 0 ? (
+              <div style={{ fontSize: '13px', color: '#a0a0b3' }}>
+                조회된 기록이 없습니다.
+              </div>
+            ) : (
+              history.slice(0, 5).map((item) => (
+                <div
+                  key={item.id}
+                  style={{
+                    backgroundColor: '#343541',
+                    borderRadius: '10px',
+                    padding: '10px 12px',
+                    fontSize: '13px',
+                    color: '#ececf1',
+                    lineHeight: 1.4,
+                    textAlign: 'left'
+                  }}
+                >
+                  {item.question}
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+      </aside>
 
-      <div>
-        <button onClick={loadHistory} style={{ padding: '10px 16px', marginBottom: '16px' }}>
-          기록 조회
-        </button>
+      <main
+        style={{
+          flex: 1,
+          display: 'flex',
+          flexDirection: 'column',
+          height: '100vh',
+        }}
+      > 
+        <div
+          style={{
+            flex: 1,
+            overflowY: 'auto',
+            padding: '40px 24px 140px',
+            boxSizing: 'border-box',
+          }}
+        >
+          <div style={{ maxWidth: '900px', margin: '0 auto' }}>
+            {messages.length === 0 ? (
+              <div
+                style={{
+                  textAlign: 'center',
+                  marginTop: '120px',
+                  color: '#6b7280',
+                }}
+              >
+                <h1 style={{ color: '#111827', marginBottom: '12px' }}>
+                  무엇이든 질문해보세요
+                </h1>
+                <p>현재 Spring Boot → FastAPI → MySQL 흐름으로 동작하는 데모입니다.</p>
+              </div>
+            ) : (
+              <div style={{ display: 'grid', gap: '18px' }}>
+                {messages.map((message, index) => (
+                  <div
+                    key={index}
+                    style={{
+                      display: 'flex',
+                      justifyContent:
+                        message.role === 'user' ? 'flex-end' : 'flex-start',
+                    }}
+                  >
+                    <div
+                      style={{
+                        maxWidth: '75%',
+                        padding: '16px 18px',
+                        borderRadius: '18px',
+                        backgroundColor:
+                          message.role === 'user' ? '#10a37f' : '#ffffff',
+                        color: message.role === 'user' ? '#ffffff' : '#111827',
+                        boxShadow:
+                          message.role === 'user'
+                            ? '0 4px 14px rgba(16,163,127,0.25)'
+                            : '0 4px 14px rgba(0,0,0,0.08)',
+                        lineHeight: 1.6,
+                        whiteSpace: 'pre-wrap',
+                      }}
+                    >
+                      {message.content}
+                    </div>
+                  </div>
+                ))}
 
-        <h2>대화 기록</h2>
-        <ul>
-          {history.map((item) => (
-            <li key={item.id} style={{ marginBottom: '12px' }}>
-              <div><strong>Q:</strong> {item.question}</div>
-              <div><strong>A:</strong> {item.answer}</div>
-            </li>
-          ))}
-        </ul>
-      </div>
+                {loading && (
+                  <div style={{ display: 'flex', justifyContent: 'flex-start' }}>
+                    <div
+                      style={{
+                        padding: '16px 18px',
+                        borderRadius: '18px',
+                        backgroundColor: '#ffffff',
+                        color: '#6b7280',
+                        boxShadow: '0 4px 14px rgba(0,0,0,0.08)',
+                      }}
+                    >
+                      응답 생성 중...
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+
+        <div
+          style={{
+            position: 'fixed',
+            left: '260px',
+            right: 0,
+            bottom: 0,
+            backgroundColor: '#f7f7f8',
+            padding: '20px 24px 28px',
+            boxSizing: 'border-box',
+            borderTop: '1px solid #e5e7eb',
+          }}
+        >
+          <div style={{ maxWidth: '900px', margin: '0 auto' }}>
+            <div
+              style={{
+                display: 'flex',
+                gap: '12px',
+                backgroundColor: '#ffffff',
+                border: '1px solid #d1d5db',
+                borderRadius: '18px',
+                padding: '12px',
+                boxShadow: '0 8px 20px rgba(0,0,0,0.06)',
+              }}
+            >
+              <input
+                type="text"
+                value={question}
+                onChange={(e) => setQuestion(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    handleAsk()
+                  }
+                }}
+                placeholder="메시지를 입력하세요"
+                style={{
+                  flex: 1,
+                  border: 'none',
+                  outline: 'none',
+                  fontSize: '15px',
+                  padding: '10px 12px',
+                }}
+              />
+              <button
+                onClick={handleAsk}
+                disabled={loading}
+                style={{
+                  padding: '12px 18px',
+                  borderRadius: '12px',
+                  border: 'none',
+                  backgroundColor: loading ? '#9ca3af' : '#111827',
+                  color: '#ffffff',
+                  fontWeight: 'bold',
+                  cursor: loading ? 'not-allowed' : 'pointer',
+                }}
+              >
+                전송
+              </button>
+            </div>
+          </div>
+        </div>
+      </main>
     </div>
   )
 }
