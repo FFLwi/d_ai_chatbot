@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react' // [수정] useEffect 추가
 
 function App() {
   const [question, setQuestion] = useState('')
@@ -6,12 +6,31 @@ function App() {
   const [history, setHistory] = useState([])
   const [loading, setLoading] = useState(false)
 
+  const loadHistory = async () => {
+    try {
+      const response = await fetch('http://localhost:8080/api/chat/history')
+      const data = await response.json()
+      setHistory(data)
+    } catch (error) {
+      console.error(error)
+    }
+  }
+
+  // [추가] 페이지 처음 열릴 때 history 자동 조회
+  useEffect(() => {
+    loadHistory()
+  }, [])
+
   const handleAsk = async () => {
     if (!question.trim()) return
 
+    // [추가] 현재 입력값을 따로 보관
+    // 전송 후 setQuestion('')로 비워도 안전하게 사용하려고 넣은 것
+    const currentQuestion = question
+
     const userMessage = {
       role: 'user',
-      content: question,
+      content: currentQuestion, // [수정] question 대신 currentQuestion 사용
     }
 
     setMessages((prev) => [...prev, userMessage])
@@ -23,7 +42,8 @@ function App() {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ question }),
+        // [수정] currentQuestion 기준으로 전송
+        body: JSON.stringify({ question: currentQuestion }),
       })
 
       const data = await response.json()
@@ -35,6 +55,9 @@ function App() {
 
       setMessages((prev) => [...prev, assistantMessage])
       setQuestion('')
+
+      // [추가] 질문 전송 성공 후 history 다시 조회해서 자동 갱신
+      await loadHistory()
     } catch (error) {
       console.error(error)
       setMessages((prev) => [
@@ -46,16 +69,6 @@ function App() {
       ])
     } finally {
       setLoading(false)
-    }
-  }
-
-  const loadHistory = async () => {
-    try {
-      const response = await fetch('http://localhost:8080/api/chat/history')
-      const data = await response.json()
-      setHistory(data)
-    } catch (error) {
-      console.error(error)
     }
   }
 
@@ -82,14 +95,14 @@ function App() {
       >
         <div>
           <h2
-              style={{
-                margin: 0,
-                fontSize: '22px',
-                color: '#ffffff',
-                fontWeight: '700',
-                letterSpacing: '0.3px',
-              }}
-              >
+            style={{
+              margin: 0,
+              fontSize: '22px',
+              color: '#ececf1',
+              fontWeight: '700',
+              letterSpacing: '0.3px',
+            }}
+          >
             d_ai_chatbot
           </h2>
           <p style={{ color: '#c5c5d2', fontSize: '14px', marginTop: '8px' }}>
@@ -110,11 +123,18 @@ function App() {
             fontWeight: 'bold',
           }}
         >
-          대화 기록 조회
+          기록 새로고침
         </button>
 
-        <div>
-          <h3 style={{ fontSize: '15px', marginBottom: '10px', color: '#d9d9e3' }}>
+        <div style={{ textAlign: 'left' }}>
+          <h3
+            style={{
+              fontSize: '15px',
+              marginBottom: '10px',
+              color: '#d9d9e3',
+              textAlign: 'left',
+            }}
+          >
             최근 기록
           </h3>
           <div style={{ display: 'grid', gap: '10px' }}>
@@ -133,10 +153,22 @@ function App() {
                     fontSize: '13px',
                     color: '#ececf1',
                     lineHeight: 1.4,
-                    textAlign: 'left'
+                    textAlign: 'left',
                   }}
                 >
-                  {item.question}
+                  <div style={{ marginBottom: '6px' }}>
+                    {item.question}
+                  </div>
+                
+                  {/* [추가] createdAt 표시 */}
+                  <div
+                    style={{
+                      fontSize: '11px',
+                      color: '#a0a0b3',
+                    }}
+                  >
+                     {item.createdAt?.replace('T', ' ')}
+                  </div>
                 </div>
               ))
             )}
@@ -151,7 +183,7 @@ function App() {
           flexDirection: 'column',
           height: '100vh',
         }}
-      > 
+      >
         <div
           style={{
             flex: 1,
