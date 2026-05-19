@@ -2,7 +2,10 @@ package com.dean.backend.controller;
 
 import com.dean.backend.dto.AskRequest;
 import com.dean.backend.dto.AskResponse;
+import com.dean.backend.dto.ChatHistory;
 import com.dean.backend.service.ChatService;
+
+import java.util.List;
 
 import org.springframework.web.bind.annotation.*;
 
@@ -21,5 +24,10 @@ public class ChatController {
         String answer = chatService.generateAnswer(question);
 
         return new AskResponse(answer);
+    }
+
+    @GetMapping("/history")
+    public List<ChatHistory> getHistory() {
+        return chatService.getChatHistoryList();
     }
 }
