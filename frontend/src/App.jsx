@@ -1,10 +1,12 @@
-import { useEffect, useState } from 'react' // [수정] useEffect 추가
+import { useEffect, useRef, useState } from 'react'
 
 function App() {
   const [question, setQuestion] = useState('')
   const [messages, setMessages] = useState([])
   const [history, setHistory] = useState([])
   const [loading, setLoading] = useState(false)
+
+  const sendingRef = useRef(false)
 
   const loadHistory = async () => {
     try {
@@ -16,21 +18,21 @@ function App() {
     }
   }
 
-  // [추가] 페이지 처음 열릴 때 history 자동 조회
   useEffect(() => {
     loadHistory()
   }, [])
 
   const handleAsk = async () => {
     if (!question.trim()) return
+    if (sendingRef.current) return
 
-    // [추가] 현재 입력값을 따로 보관
-    // 전송 후 setQuestion('')로 비워도 안전하게 사용하려고 넣은 것
-    const currentQuestion = question
+    sendingRef.current = true
+
+    const currentQuestion = question.trim()
 
     const userMessage = {
       role: 'user',
-      content: currentQuestion, // [수정] question 대신 currentQuestion 사용
+      content: currentQuestion,
     }
 
     setMessages((prev) => [...prev, userMessage])
@@ -42,7 +44,6 @@ function App() {
         headers: {
           'Content-Type': 'application/json',
         },
-        // [수정] currentQuestion 기준으로 전송
         body: JSON.stringify({ question: currentQuestion }),
       })
 
@@ -55,8 +56,6 @@ function App() {
 
       setMessages((prev) => [...prev, assistantMessage])
       setQuestion('')
-
-      // [추가] 질문 전송 성공 후 history 다시 조회해서 자동 갱신
       await loadHistory()
     } catch (error) {
       console.error(error)
@@ -69,6 +68,7 @@ function App() {
       ])
     } finally {
       setLoading(false)
+      sendingRef.current = false
     }
   }
 
@@ -156,18 +156,14 @@ function App() {
                     textAlign: 'left',
                   }}
                 >
-                  <div style={{ marginBottom: '6px' }}>
-                    {item.question}
-                  </div>
-                
-                  {/* [추가] createdAt 표시 */}
+                  <div style={{ marginBottom: '6px' }}>{item.question}</div>
                   <div
                     style={{
                       fontSize: '11px',
                       color: '#a0a0b3',
                     }}
                   >
-                     {item.createdAt?.replace('T', ' ')}
+                    {item.createdAt?.replace('T', ' ')}
                   </div>
                 </div>
               ))
@@ -287,7 +283,10 @@ function App() {
                 value={question}
                 onChange={(e) => setQuestion(e.target.value)}
                 onKeyDown={(e) => {
-                  if (e.key === 'Enter') {
+                  if (e.nativeEvent.isComposing) return
+
+                  if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault()
                     handleAsk()
                   }
                 }}
