@@ -2,7 +2,7 @@ package com.dean.backend.dto;
 
 public class AskRequest {
 
-      private String question;
+    private String question;
 
     public AskRequest() {
     }
@@ -18,5 +18,4 @@ public class AskRequest {
     public void setQuestion(String question) {
         this.question = question;
     }
-    
 }
