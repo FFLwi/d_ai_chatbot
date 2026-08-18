@@ -90,6 +90,45 @@ analysis_parser = JsonOutputParser()
 # 질문 분석용 Chain
 # 질문 -> PromptTemplate -> Gemini -> JSON(dict)
 analysis_chain = analysis_prompt_template | llm | analysis_parser
+# =========================
+# 3. RAG 답변용 Prompt / Chain
+# =========================
+
+rag_prompt_template = ChatPromptTemplate.from_messages(
+    [
+        (
+            "system",
+            """
+            너는 주어진 참고자료를 기반으로 답변하는 AI다.
+
+            아래 참고자료를 우선적으로 사용해서 답변해라.
+            참고자료에 없는 내용은 추측하지 말고
+            알 수 없다고 답변해라.
+
+            참고자료:
+            {context}
+            """
+        ),
+        (
+            "human",
+            "{question}"
+        )
+    ]
+)
+
+# RAG도 최종 답변은 문자열로 받을 것이므로
+# StrOutputParser 사용
+rag_parser = StrOutputParser()
+
+# context + question
+#      ↓
+# PromptTemplate
+#      ↓
+# Gemini
+#      ↓
+# 문자열
+rag_chain = rag_prompt_template | llm | rag_parser
+
 
 # =========================
 # Request / Response DTO
@@ -353,6 +392,45 @@ def search_chunks(request: AskRequest):
             "question": request.question,
             "results": results
         }
+
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=str(e)
+        )
+    
+# =========================
+# 6. RAG 실제 답변 API
+# =========================
+@app.post("/ai/rag", response_model=AskResponse)
+def rag_ask(request: AskRequest):
+    try:
+
+        # 1. 질문과 유사한 Chunk TOP 2 검색
+        retrieved_chunks = search_similar_chunks(
+            question=request.question,
+            top_k=2
+        )
+
+        # 2. 검색된 Chunk의 content만 꺼내서
+        # 하나의 참고자료(context) 문자열로 합친다.
+        context = "\n\n".join(
+            item["content"]
+            for item in retrieved_chunks
+        )
+
+        # 3. 질문 + 검색된 참고자료를 RAG Chain에 전달
+        answer = rag_chain.invoke(
+            {
+                "question": request.question,
+                "context": context
+            }
+        )
+
+        # 4. 최종 답변 반환
+        return AskResponse(
+            answer=answer
+        )
 
     except Exception as e:
         raise HTTPException(
