@@ -12,6 +12,7 @@ from pathlib import Path
 from langchain_community.document_loaders import TextLoader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 import math
+from langchain_chroma import Chroma
 
 load_dotenv()
 
@@ -225,7 +226,45 @@ def analyze(request: AskRequest):
 # 이렇게 하면 터미널 실행 위치가 달라도 경로 문제가 줄어든다.
 BASE_DIR = Path(__file__).resolve().parent
 DOCUMENT_PATH = BASE_DIR / "docs" / "company_info.txt"
+# =========================
+# Vector Store 설정
+# =========================
 
+# Embedding Vector를 실제로 저장할 로컬 폴더
+VECTOR_DB_PATH = BASE_DIR / "chroma_db"
+
+
+# Chroma Vector Store 생성
+#
+# 중요:
+# 여기서는 아직 문서를 Embedding하지 않는다.
+# Vector Store라는 저장 공간만 준비한다.
+#
+# persist_directory를 지정했기 때문에
+# 벡터가 로컬 디스크에 저장된다.
+vector_store = Chroma(
+    collection_name="company_info",
+    embedding_function=embeddings,
+    persist_directory=str(VECTOR_DB_PATH)
+)
+
+
+# Vector Store를 Retriever로 변환
+#
+# Retriever 역할:
+#
+# 질문
+#   ↓
+# Vector Store 검색
+#   ↓
+# 관련 Document TOP 2 반환
+#
+retriever = vector_store.as_retriever(
+    search_type="similarity",
+    search_kwargs={
+        "k": 2
+    }
+)
 
 def load_and_split_documents():
     """
@@ -257,6 +296,44 @@ def load_and_split_documents():
     return chunks
 
 # =========================
+# 4-1. Vector Store에 문서 저장
+# =========================
+def save_documents_to_vector_store():
+
+    # 1. 문서 읽기 + Chunk 분할
+    chunks = load_and_split_documents()
+
+    # Chunk마다 고정된 ID 생성
+    #
+    # 예:
+    # company_info_0
+    # company_info_1
+    # company_info_2
+    ids = [
+        f"company_info_{index}"
+        for index in range(len(chunks))
+    ]
+
+    # Document를 Vector Store에 저장한다.
+    #
+    # 내부적으로:
+    #
+    # Chunk
+    #   ↓
+    # Embedding
+    #   ↓
+    # Vector
+    #   ↓
+    # Chroma 저장
+    #
+    vector_store.add_documents(
+        documents=chunks,
+        ids=ids
+    )
+
+    return len(chunks)
+
+# =========================
 # 4. RAG 2단계: Chunk Embedding
 # =========================
 def embed_chunks():
@@ -277,6 +354,7 @@ def embed_chunks():
 
     # 원본 Chunk와 변환된 Vector를 같이 반환
     return chunks, chunk_vectors
+
 
 # =========================
 # Embedding 결과 확인용 API
@@ -399,27 +477,79 @@ def search_chunks(request: AskRequest):
             detail=str(e)
         )
     
+# # =========================
+# # 6. RAG 실제 답변 API -  OLD
+# # =========================
+# @app.post("/ai/rag", response_model=AskResponse)
+# def rag_ask(request: AskRequest):
+#     try:
+
+#         # 1. 질문과 유사한 Chunk TOP 2 검색
+#         retrieved_chunks = search_similar_chunks(
+#             question=request.question,
+#             top_k=2
+#         )
+
+#         # 2. 검색된 Chunk의 content만 꺼내서
+#         # 하나의 참고자료(context) 문자열로 합친다.
+#         context = "\n\n".join(
+#             item["content"]
+#             for item in retrieved_chunks
+#         )
+
+#         # 3. 질문 + 검색된 참고자료를 RAG Chain에 전달
+#         answer = rag_chain.invoke(
+#             {
+#                 "question": request.question,
+#                 "context": context
+#             }
+#         )
+
+#         # 4. 최종 답변 반환
+#         return AskResponse(
+#             answer=answer
+#         )
+
+#     except Exception as e:
+#         raise HTTPException(
+#             status_code=500,
+#             detail=str(e)
+#         )
+
 # =========================
-# 6. RAG 실제 답변 API
+# 6. Vector Store + Retriever RAG API
 # =========================
 @app.post("/ai/rag", response_model=AskResponse)
 def rag_ask(request: AskRequest):
+
     try:
 
-        # 1. 질문과 유사한 Chunk TOP 2 검색
-        retrieved_chunks = search_similar_chunks(
-            question=request.question,
-            top_k=2
+        # 1. Retriever에게 질문 전달
+        #
+        # 내부적으로:
+        #
+        # 질문
+        # ↓
+        # Embedding
+        # ↓
+        # Vector Store
+        # ↓
+        # 관련 Document TOP 2
+        #
+        retrieved_docs = retriever.invoke(
+            request.question
         )
 
-        # 2. 검색된 Chunk의 content만 꺼내서
-        # 하나의 참고자료(context) 문자열로 합친다.
+
+        # 2. 검색된 Document의 실제 내용만
+        # context 문자열로 합친다.
         context = "\n\n".join(
-            item["content"]
-            for item in retrieved_chunks
+            doc.page_content
+            for doc in retrieved_docs
         )
 
-        # 3. 질문 + 검색된 참고자료를 RAG Chain에 전달
+
+        # 3. 질문 + 검색된 참고자료를 Gemini에게 전달
         answer = rag_chain.invoke(
             {
                 "question": request.question,
@@ -427,10 +557,73 @@ def rag_ask(request: AskRequest):
             }
         )
 
+
         # 4. 최종 답변 반환
         return AskResponse(
             answer=answer
         )
+
+
+    except Exception as e:
+
+        raise HTTPException(
+            status_code=500,
+            detail=str(e)
+        )
+# =========================
+# Vector Store 문서 등록 API
+# =========================
+@app.post("/ai/index")
+def index_documents():
+
+    try:
+
+        chunk_count = save_documents_to_vector_store()
+
+        return {
+            "message": "Vector Store 저장 완료",
+            "chunk_count": chunk_count
+        }
+
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=str(e)
+        )
+    
+# =========================
+# Retriever 검색 확인 API
+# =========================
+@app.post("/ai/vector-search")
+def vector_search(request: AskRequest):
+
+    try:
+
+        # Retriever에게 질문 전달
+        #
+        # 질문
+        # ↓
+        # 질문 Embedding
+        # ↓
+        # Vector Store 검색
+        # ↓
+        # 관련 Document TOP 2
+        retrieved_docs = retriever.invoke(
+            request.question
+        )
+
+        return {
+            "question": request.question,
+
+            "results": [
+                {
+                    "content": doc.page_content,
+                    "metadata": doc.metadata
+                }
+
+                for doc in retrieved_docs
+            ]
+        }
 
     except Exception as e:
         raise HTTPException(
