@@ -5,7 +5,7 @@ function App() {
   const [messages, setMessages] = useState([])
   const [history, setHistory] = useState([])
   const [loading, setLoading] = useState(false)
-
+  const [conversationId, setConversationId] = useState(() => crypto.randomUUID())
   const sendingRef = useRef(false)
 
   const loadHistory = async () => {
@@ -44,7 +44,10 @@ function App() {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ question: currentQuestion }),
+        body: JSON.stringify({ 
+          question: currentQuestion,
+          conversationId: conversationId,
+         }),
       })
 
       const data = await response.json()

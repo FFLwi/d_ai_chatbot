@@ -120,13 +120,34 @@ public class ChatService {
 
     // RAG 기반 AI 답변 요청
 // Spring Boot -> FastAPI /ai/rag 호출
-public String generateRagAnswer(String question) {
+public String generateRagAnswer(String question, String conversationId ) {
     try {
+
+        List<ChatHistory> previousHistory =
+        chatHistoryMapper.selectByConversationId(conversationId);
+
+        StringBuilder historyBuilder = new StringBuilder();
+
+        for (ChatHistory item : previousHistory) {
+            historyBuilder
+                    .append("사용자: ")
+                    .append(item.getQuestion())
+                    .append("\n");
+
+            historyBuilder
+                    .append("AI: ")
+                    .append(item.getAnswer())
+                    .append("\n");
+        }
+
+        String history = historyBuilder.toString();
+
         String fastApiUrl = "http://127.0.0.1:8000/ai/rag";
 
         AskRequest requestBody = new AskRequest();
         requestBody.setQuestion(question);
-
+        requestBody.setConversationId(conversationId);
+        requestBody.setHistory(history);
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
 
@@ -151,6 +172,7 @@ public String generateRagAnswer(String question) {
 
         // 질문/답변 이력 저장
         ChatHistory chatHistory = new ChatHistory();
+        chatHistory.setConversationId(conversationId); 
         chatHistory.setQuestion(question);
         chatHistory.setAnswer(answer);
 

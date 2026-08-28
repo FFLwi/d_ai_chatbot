@@ -100,14 +100,18 @@ rag_prompt_template = ChatPromptTemplate.from_messages(
         (
             "system",
             """
-            너는 주어진 참고자료를 기반으로 답변하는 AI다.
+            너는 주어진 참고자료와 이전 대화를 기반으로 답변하는 AI다.
 
-            아래 참고자료를 우선적으로 사용해서 답변해라.
-            참고자료에 없는 내용은 추측하지 말고
-            알 수 없다고 답변해라.
+            이전 대화:
+            {history}
 
             참고자료:
             {context}
+
+            이전 대화의 맥락을 참고해서 사용자의 질문을 이해해라.
+            사실 정보는 참고자료를 우선적으로 사용해라.
+            참고자료에 없는 내용은 추측하지 말고
+            알 수 없다고 답변해라.
             """
         ),
         (
@@ -136,6 +140,8 @@ rag_chain = rag_prompt_template | llm | rag_parser
 # =========================
 class AskRequest(BaseModel):
     question: str
+    conversationId: str = ""
+    history: str = ""
 
 class AskResponse(BaseModel):
     answer: str
@@ -544,8 +550,8 @@ def rag_ask(request: AskRequest):
         # 2. 검색된 Document의 실제 내용만
         # context 문자열로 합친다.
         context = "\n\n".join(
-            doc.page_content
-            for doc in retrieved_docs
+        doc.page_content
+        for doc in retrieved_docs
         )
 
 
@@ -553,6 +559,7 @@ def rag_ask(request: AskRequest):
         answer = rag_chain.invoke(
             {
                 "question": request.question,
+                "history": request.history,
                 "context": context
             }
         )

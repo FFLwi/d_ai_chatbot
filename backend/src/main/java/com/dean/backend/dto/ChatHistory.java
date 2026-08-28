@@ -7,6 +7,7 @@ public class ChatHistory {
     private String question;
     private String answer;
     private LocalDateTime createdAt;
+    private String conversationId;
 
     public ChatHistory(){
 
@@ -38,5 +39,14 @@ public class ChatHistory {
 
     public void setCreatedAt(LocalDateTime createdAt){
         this.createdAt = createdAt;
+    }
+
+
+    public String getConversationId() {
+        return conversationId;
+    }
+
+    public void setConversationId(String conversationId) {
+        this.conversationId = conversationId;
     }
 }

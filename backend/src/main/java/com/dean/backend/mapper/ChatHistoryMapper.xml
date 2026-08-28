@@ -6,14 +6,39 @@
 <mapper namespace="com.dean.backend.mapper.ChatHistoryMapper">
 
     <insert id="insertChatHistory" parameterType="ChatHistory">
-        INSERT INTO chat_history (question, answer)
-        VALUES (#{question}, #{answer})
+        INSERT INTO chat_history ( 
+            conversation_id, 
+            question, 
+            answer)
+        VALUES ( 
+            #{conversationId}, 
+            #{question}, 
+            #{answer})
     </insert>
 
     <select id="selectChatHistoryList" resultType="ChatHistory">
-        SELECT id, question, answer, created_at AS createdAt
+        SELECT 
+        id, 
+        conversation_id AS conversationId,
+        question, 
+        answer, 
+        created_at AS createdAt
         FROM chat_history
-        ORDER BY id DESC
+        WHERE conversation_id = #{conversationID}
+        ORDER BY created_at ASC
+    </select>
+
+    <!-- 특정 conversationId의 이전 대화 조회 -->
+    <select id="selectByConversationId" resultType="ChatHistory">
+        SELECT
+            id,
+            conversation_id AS conversationId,
+            question,
+            answer,
+            created_at AS createdAt
+        FROM chat_history
+        WHERE conversation_id = #{conversationId}
+        ORDER BY created_at ASC
     </select>
 
 

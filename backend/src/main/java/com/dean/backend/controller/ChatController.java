@@ -47,7 +47,8 @@ public class ChatController {
 
     String answer =
             chatService.generateRagAnswer(
-                    request.getQuestion()
+                    request.getQuestion(),
+                    request.getConversationId()
             );
 
     return new AskResponse(answer);

@@ -18,4 +18,6 @@ public class AskResponse {
         this.answer = answer;
     }
 
+    
+
 }
