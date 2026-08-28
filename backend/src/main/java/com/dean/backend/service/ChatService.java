@@ -117,4 +117,52 @@ public class ChatService {
             return errorResponse;
         }
     }
+
+    // RAG 기반 AI 답변 요청
+// Spring Boot -> FastAPI /ai/rag 호출
+public String generateRagAnswer(String question) {
+    try {
+        String fastApiUrl = "http://127.0.0.1:8000/ai/rag";
+
+        AskRequest requestBody = new AskRequest();
+        requestBody.setQuestion(question);
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_JSON);
+
+        HttpEntity<AskRequest> httpEntity =
+                new HttpEntity<>(requestBody, headers);
+
+        ResponseEntity<AskResponse> response =
+                restTemplate.exchange(
+                        fastApiUrl,
+                        HttpMethod.POST,
+                        httpEntity,
+                        AskResponse.class
+                );
+
+        AskResponse responseBody = response.getBody();
+
+        if (responseBody == null) {
+            return "FastAPI RAG 응답이 비어 있습니다.";
+        }
+
+        String answer = responseBody.getAnswer();
+
+        // 질문/답변 이력 저장
+        ChatHistory chatHistory = new ChatHistory();
+        chatHistory.setQuestion(question);
+        chatHistory.setAnswer(answer);
+
+        chatHistoryMapper.insertChatHistory(chatHistory);
+
+        return answer;
+
+    } catch (Exception e) {
+        e.printStackTrace();
+        return "RAG 서버와 연결할 수 없습니다: " + e.getMessage();
+    }
+}
+
+
 }

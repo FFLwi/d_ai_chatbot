@@ -17,3 +17,6 @@ build/
 
 # OS
 .DS_Store
+
+ai-server/.env
+ai-server/chroma_db/

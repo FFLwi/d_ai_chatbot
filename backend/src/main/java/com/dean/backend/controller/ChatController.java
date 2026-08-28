@@ -1,10 +1,10 @@
 package com.dean.backend.controller;
 
 import com.dean.backend.dto.AnalyzeResponse;
-import com.dean.backend.dto.AnalyzeResponse;
+
 import com.dean.backend.dto.AskRequest;
 import com.dean.backend.dto.AskResponse;
-import com.dean.backend.dto.AnalyzeResponse;
+
 import com.dean.backend.dto.ChatHistory;
 import com.dean.backend.service.ChatService;
 import java.util.Collections;
@@ -41,4 +41,16 @@ public class ChatController {
     public List<ChatHistory> getHistory() {
         return chatService.getChatHistoryList();
     }
+
+    @PostMapping("/rag")
+    public AskResponse rag(@RequestBody AskRequest request) {
+
+    String answer =
+            chatService.generateRagAnswer(
+                    request.getQuestion()
+            );
+
+    return new AskResponse(answer);
+}
+
 }
