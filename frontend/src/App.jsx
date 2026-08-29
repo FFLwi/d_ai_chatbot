@@ -8,6 +8,43 @@ function App() {
   const [conversationId, setConversationId] = useState(() => crypto.randomUUID())
   const sendingRef = useRef(false)
 
+  const loadConversation = async (selectedConversationId) => {
+  try {
+    const response = await fetch(
+      `http://localhost:8080/api/chat/history/${selectedConversationId}`
+    )
+
+    const data = await response.json()
+
+    const loadedMessages = data.flatMap((item) => [
+      {
+        role: 'user',
+        content: item.question,
+      },
+      {
+        role: 'assistant',
+        content: item.answer,
+      },
+    ])
+
+    // 현재 대화방을 과거 대화방으로 변경
+    setConversationId(selectedConversationId)
+
+    // 과거 메시지를 화면에 복원
+    setMessages(loadedMessages)
+
+    setQuestion('')
+  } catch (error) {
+    console.error(error)
+  }
+}
+
+const startNewConversation = () => {
+  setConversationId(crypto.randomUUID())
+  setMessages([])
+  setQuestion('')
+}
+
   const loadHistory = async () => {
     try {
       const response = await fetch('http://localhost:8080/api/chat/history')
@@ -74,7 +111,31 @@ function App() {
       sendingRef.current = false
     }
   }
+    const conversationMap = new Map()
 
+    history.forEach((item) => {
+    if (!item.conversationId) return
+
+    if (!conversationMap.has(item.conversationId)) {
+
+      // 처음 발견한 데이터는 가장 최신 기록
+      conversationMap.set(item.conversationId, {
+        ...item,
+        title: item.question,
+      })
+
+    } else {
+
+      // history가 최신 → 과거 순서이므로
+      // 계속 덮어쓰면 마지막에는
+      // 해당 대화의 최초 질문이 title에 남는다.
+      conversationMap.get(item.conversationId).title =
+        item.question
+    }
+  })
+
+  const conversationList =
+    Array.from(conversationMap.values())
   return (
     <div
       style={{
@@ -128,6 +189,22 @@ function App() {
         >
           기록 새로고침
         </button>
+        
+        <button
+          onClick={startNewConversation}
+          style={{
+            padding: '12px 14px',
+            borderRadius: '10px',
+            border: '1px solid #444654',
+            backgroundColor: '#343541',
+            color: '#ffffff',
+            cursor: 'pointer',
+            textAlign: 'left',
+            fontWeight: 'bold',
+          }}
+        >
+          + 새 대화
+        </button>
 
         <div style={{ textAlign: 'left' }}>
           <h3
@@ -141,25 +218,29 @@ function App() {
             최근 기록
           </h3>
           <div style={{ display: 'grid', gap: '10px' }}>
-            {history.length === 0 ? (
+            {conversationList.length === 0 ? (
               <div style={{ fontSize: '13px', color: '#a0a0b3' }}>
                 조회된 기록이 없습니다.
               </div>
             ) : (
-              history.slice(0, 5).map((item) => (
-                <div
-                  key={item.id}
-                  style={{
-                    backgroundColor: '#343541',
-                    borderRadius: '10px',
-                    padding: '10px 12px',
-                    fontSize: '13px',
-                    color: '#ececf1',
-                    lineHeight: 1.4,
-                    textAlign: 'left',
-                  }}
-                >
-                  <div style={{ marginBottom: '6px' }}>{item.question}</div>
+              conversationList.slice(0, 5).map((item) => (
+                    <div
+                    key={item.conversationId}
+                    onClick={() => loadConversation(item.conversationId)}
+                    style={{
+                      backgroundColor: '#343541',
+                      borderRadius: '10px',
+                      padding: '10px 12px',
+                      fontSize: '13px',
+                      color: '#ececf1',
+                      lineHeight: 1.4,
+                      textAlign: 'left',
+                      cursor: 'pointer',
+                    }}
+                  >
+                  <div style={{ marginBottom: '6px' }}>
+                    {item.title}
+                  </div>
                   <div
                     style={{
                       fontSize: '11px',

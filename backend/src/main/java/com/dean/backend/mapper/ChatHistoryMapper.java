@@ -10,7 +10,8 @@ import java.util.List;
 public interface ChatHistoryMapper {
     void insertChatHistory(ChatHistory chatHistory);
     List<ChatHistory> selectChatHistoryList();
-     List<ChatHistory> selectByConversationId(
+    
+    List<ChatHistory> selectByConversationId(
         @Param("conversationId") String conversationId
     );
 }
