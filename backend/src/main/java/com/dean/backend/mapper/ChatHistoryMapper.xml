@@ -24,7 +24,7 @@
         answer, 
         created_at AS createdAt
         FROM chat_history
-        ORDER BY created_at ASC
+        ORDER BY created_at DESC
     </select>
 
     <!-- 특정 conversationId의 이전 대화 조회 -->

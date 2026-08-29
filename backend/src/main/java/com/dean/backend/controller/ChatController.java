@@ -41,6 +41,12 @@ public class ChatController {
     public List<ChatHistory> getHistory() {
         return chatService.getChatHistoryList();
     }
+    @GetMapping("/history/{conversationId}")
+    public List<ChatHistory> getConversationHistory(
+            @PathVariable String conversationId
+    ) {
+        return chatService.getConversationHistory(conversationId);
+    }
 
     @PostMapping("/rag")
     public AskResponse rag(@RequestBody AskRequest request) {

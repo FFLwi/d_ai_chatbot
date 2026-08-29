@@ -71,6 +71,11 @@ public class ChatService {
         return chatHistoryMapper.selectChatHistoryList();
     }
 
+    // 특정 대화방의 전체 대화 조회
+    public List<ChatHistory> getConversationHistory(String conversationId) {
+        return chatHistoryMapper.selectByConversationId(conversationId);
+    }
+    
     // 질문 분석 요청
     // Spring Boot -> FastAPI /ai/analyze 호출
     public AnalyzeResponse analyzeQuestion(String question) {
