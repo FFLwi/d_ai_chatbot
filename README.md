@@ -1,39 +1,26 @@
 # d_ai_chatbot
-d_ai_chatbot
 
 ## 프로젝트 개요
-대화형 AI 웹 애플리케이션 구현 프로젝트
 
-React 기반 사용자 인터페이스, Spring Boot 기반 메인 API 서버,  
-Python(FastAPI + LangChain) 기반 AI 응답 처리 서버,  
-MyBatis 기반 데이터 접근 구조를 구성하여  
-질문 입력, 응답 생성, 대화 이력 저장 및 조회 기능을 구현한다.
-
-## 프로젝트 목표
-- 대화형 AI 서비스의 기본 아키텍처 설계
-- 프론트엔드, 백엔드, AI 서버, DB 간 요청 흐름 구현
-- LangChain 기반 응답 처리 구조 적용
-- 기능 확장을 고려한 구조 설계
-
-## 기술 스택
-- React
-- Spring Boot
-- FastAPI
-- LangChain
-- MyBatis
-- MySQL
-- GitHub
-- Sourcetree
+React, Spring Boot, FastAPI 기반의 대화형 AI 웹 애플리케이션입니다.
 
 ## 주요 기능
-- 사용자 질문 입력
-- AI 응답 생성 및 출력
-- 대화 기록 저장
-- 대화 기록 조회
-- RAG 연동
-- AI Agent 기능 확장
 
-## 확장 예정
-- 사용자 인증
-- 문서 업로드
-- Docker 환경 구성
+### 1. RAG 기반 질의응답
+- Document Chunking
+- Embedding
+- Chroma Vector DB
+- Retriever 기반 Vector Similarity Search
+- Gemini LLM 기반 답변 생성
+
+### 2. 대화 이력 및 Memory
+- conversationId 기반 대화방 관리
+- MySQL 기반 질문/답변 저장
+- 이전 대화 Context 반영
+
+## 기술 스택
+
+- Frontend: React, Vite
+- Backend: Spring Boot, MyBatis, MySQL
+- AI Server: Python, FastAPI
+- AI/RAG: LangChain, Gemini, Chroma Vector DB
